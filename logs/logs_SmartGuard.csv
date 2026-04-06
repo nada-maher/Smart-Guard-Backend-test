@@ -1,0 +1,4 @@
+Organization,Event Time,Confidence Score,Camera ID
+SmartGuard,2026-04-05T12:45:00.000000,0.1234,cam1
+SmartGuard,2026-04-05T12:45:01.000000,0.5678,cam1
+SmartGuard,2026-04-05T12:45:02.000000,0.2345,cam1
