@@ -77,6 +77,7 @@ from shared_state import latest_pred  # shared_state
 from routers.auth import router as auth_router
 from routers.video_stream_router import router as stream_router
 from routers.video_router import router as video_router
+from routers.manual_analysis import router as manual_analysis_router
 
 # Enable CORS for React frontend
 app.add_middleware(
@@ -91,6 +92,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(stream_router)
 app.include_router(video_router)
+app.include_router(manual_analysis_router)
 
 @app.on_event("startup")
 async def startup_event():
@@ -98,25 +100,11 @@ async def startup_event():
     shared_state.loop = asyncio.get_event_loop()
     print("✅ Global event loop initialized in shared_state")
     
-    # Start stream processor automatically
-    import threading
-    import workers.stream_processor as stream_processor
-    
-    def run_stream():
-        try:
-            print("🚀 Starting stream processor automatically...")
-            stream_processor.process_video_stream(
-                video_source=0,  # Default camera
-                video_id="cam1",  # Default camera ID
-                organization="SmartGuard"  # Default organization
-            )
-        except Exception as e:
-            print(f"❌ Stream processor error: {e}")
-    
-    # Start stream in background thread
-    stream_thread = threading.Thread(target=run_stream, daemon=True)
-    stream_thread.start()
-    print("✅ Stream processor thread started")
+    # Manual mode: Stream processor disabled
+    # Camera will be triggered manually from frontend
+    print(" Manual mode activated - Camera will be triggered from frontend")
+    print(" Use /api/manual/analyze-video endpoint for video analysis")
+    print(" Use /ws/manual-analysis WebSocket for real-time analysis")
 
 # Shared variable for latest prediction
 latest_pred = None

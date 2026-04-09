@@ -13,3 +13,9 @@ httpx>=0.25.0
 requests>=2.31.0
 opencv-python>=4.8.0
 numpy>=1.24.0
+xvfb-run
+redis>=5.0.0
+twilio>=8.0.0
+supabase>=2.0.0
+psycopg2-binary>=2.9.0
+websockets>=12.0

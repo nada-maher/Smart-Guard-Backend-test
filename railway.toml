@@ -1,0 +1,17 @@
+[build]
+nixpacks = true
+
+[nixpacks]
+pkgs = [
+  "libglvnd",
+  "libglvnd.dev",
+  "libgcc",
+  "libstdcxx",
+  "libx11",
+  "libxcb",
+  "libxext",
+  "libxrender",
+  "libsm",
+  "zlib",
+  "ffmpeg"
+]

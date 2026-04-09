@@ -20,10 +20,10 @@ def get_default_organization():
         c.execute("SELECT organization FROM users WHERE role = 'admin' LIMIT 1")
         result = c.fetchone()
         conn.close()
-        return result[0] if result else "SmartGuard"
+        return result[0] if result else "Smart Guard"
     except Exception as e:
         print(f"Error getting organization: {e}")
-        return "SmartGuard"
+        return "Smart Guard"
 
 # Cooldown mechanism to reduce duplicate alerts
 # Stores {video_id: last_alert_timestamp}
@@ -137,7 +137,7 @@ def process_video_stream(video_source=0, video_id=None, organization=None):
                 cv2.rectangle(fallback_img, (20, 20), (620, 460), (100, 100, 100), 2)
                 
                 # Add title
-                cv2.putText(fallback_img, "SmartGuard - Simulation Mode", (120, 100), 
+                cv2.putText(fallback_img, "Smart Guard - Simulation Mode", (120, 100), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                 
                 # Add instructions
@@ -298,7 +298,7 @@ def process_video_stream(video_source=0, video_id=None, organization=None):
                 except Exception as e:
                     print(f"Inference error: {e}")
                     # Log error but don't use false prediction
-                    log_inference_result(video_id, False, 0.0, active_org)
+                    log_inference_result(video_id, False, 0.0, "Smart Guard")  # Default fallback
                 finally:
                     if os.path.exists(tmp_name):
                         try: os.remove(tmp_name)
@@ -306,45 +306,102 @@ def process_video_stream(video_source=0, video_id=None, organization=None):
 
             frames = [] 
 
+def sanitize_organization_name(organization_name):
+    """
+    Sanitize organization names by replacing spaces and special characters with underscores.
+    Example: 'Smart Guard' -> 'Smart_Guard'
+    """
+    import re
+    # Replace spaces and special characters with underscores, keep alphanumeric and underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', organization_name)
+    # Remove multiple consecutive underscores
+    sanitized = re.sub(r'_+', '_', sanitized)
+    # Remove leading/trailing underscores
+    sanitized = sanitized.strip('_')
+    return sanitized
+
 def log_inference_result(video_id, is_abnormal, confidence, current_organization):
     import csv
     import os
     from datetime import datetime
     
-    # Ensure logs directory exists
-    logs_dir = "logs"
-    if not os.path.exists(logs_dir):
-        os.makedirs(logs_dir)
+    try:
+        # Ensure logs directory exists
+        logs_dir = "logs"
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+            
+        # Sanitize organization name
+        safe_org_name = sanitize_organization_name(current_organization)
+        print(f"🔍 DEBUG: Sanitized organization name: '{current_organization}' -> '{safe_org_name}'")
         
-    # Organization-specific log file only
-    safe_org_name = "".join([c if c.isalnum() else "_" for c in current_organization])
-    org_csv = os.path.join(logs_dir, f"logs_{safe_org_name}.csv")
-    
-    # Current timestamp
-    event_time = datetime.now().isoformat()
-    
-    # Professional format for organization-specific logs
-    log_row = [
-        current_organization,           # Organization
-        event_time,                     # Event Time
-        f"{confidence:.4f}",            # Confidence Score
-        video_id                        # Camera ID
-    ]
-    
-    # Professional headers for organization-specific files
-    header = ["Organization", "Event Time", "Confidence Score", "Camera ID"]
-    
-    def append_to_csv(file_path, row):
-        file_exists = os.path.exists(file_path)
+        # Master log file (all organizations)
+        master_csv = "inference_logs.csv"
+        
+        # Organization-specific log file with professional headers
+        org_csv = os.path.join(logs_dir, f"logs_{safe_org_name}.csv")
+        
+        # Current timestamp
+        event_time = datetime.now().isoformat()
+        
+        # Prepare data for master log (existing format)
+        master_log_row = [
+            event_time, 
+            video_id, 
+            f"{confidence:.4f}", 
+            "0.161", 
+            str(is_abnormal), 
+            "N/A", "N/A", "N/A", "N/A", "N/A", 
+            current_organization
+        ]
+        
+        # Prepare data for organization-specific log (professional format)
+        org_log_row = [
+            current_organization,           # Organization
+            event_time,                     # Event Time
+            f"{confidence:.4f}",            # Confidence Score
+            video_id                        # Camera ID
+        ]
+        
+        # Headers for different log files
+        master_header = ["timestamp", "video_id", "confidence", "threshold", "is_abnormal", 
+                        "model_path", "seq_len", "img_size", "saved_video_path", "event", "organization"]
+        
+        org_header = ["Organization", "Event Time", "Confidence Score", "Camera ID"]
+        
+        def safe_append_to_csv(file_path, row, header):
+            """Safely append to CSV with error handling and fallback"""
+            file_exists = os.path.exists(file_path)
+            try:
+                with open(file_path, mode="a", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    if not file_exists or os.path.getsize(file_path) == 0:
+                        writer.writerow(header)
+                    writer.writerow(row)
+                print(f"✅ Successfully logged to {file_path}")
+                return True
+            except Exception as e:
+                print(f"❌ Error logging to {file_path}: {e}")
+                return False
+        
+        # Log to master file
+        master_success = safe_append_to_csv(master_csv, master_log_row, master_header)
+        
+        # Log to organization-specific file
+        org_success = safe_append_to_csv(org_csv, org_log_row, org_header)
+        
+        # Fallback mechanism: if org-specific logging fails, filter from master
+        if not org_success:
+            print(f"⚠️ Fallback: Organization-specific logging failed, data available in master log")
+            # The data is already in the master log, so no additional action needed
+        
+        print(f"📊 Logging complete - Master: {'✅' if master_success else '❌'}, Org: {'✅' if org_success else '❌'}")
+        
+    except Exception as e:
+        print(f"❌ Critical error in log_inference_result: {e}")
+        # As a last resort, try to log to a simple error log
         try:
-            with open(file_path, mode="a", newline="\n", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                if not file_exists or os.path.getsize(file_path) == 0:
-                    writer.writerow(header)
-                writer.writerow(row)
-        except Exception as e:
-            print(f"Error logging to {file_path}: {e}")
-
-    # Only log to organization-specific file (no global file)
-    append_to_csv(org_csv, log_row)
-    print(f"✅ Logged to organization-specific file: {org_csv}")
+            with open("error_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().isoformat()} - Logging Error: {e}\n")
+        except:
+            pass

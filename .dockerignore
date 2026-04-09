@@ -1,0 +1,51 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+.env/
+
+# Ignore environment files
+.env
+*.env
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore OS files
+*.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+
+# Ignore frontend
+node_modules/
+dist/
+build/
+*.map
+
+# Ignore datasets
+*.csv
+*.xlsx
+*.xls
+dataset/
+data/
+
+# Ignore big files
+videos/
+*.mp4
+*.avi
+*.mov
+
+
+
+# Ignore cloud runtime folders
+.fly/
+
+# Ignore temporary files
+tmp/
